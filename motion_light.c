@@ -15,16 +15,19 @@
 #include "pico/cyw43_arch.h"
 #endif
 
-#ifndef LED_DELAY_MS
+// Define constants
+#ifndef DEFINES
+
+// General
+#define ADC_VREF 3.3f
 #define LED_DELAY_MS 250
-#endif
 
-#ifndef CE_READ_PIN
+// CE and ADC Values
 #define CE_READ_PIN 28
-#endif
-
-#ifndef CE_ADC_INPUT
 #define CE_ADC_INPUT 2
+#define CE_ADC_VREF_DARK 2.5f
+
+#define DEFINES
 #endif
 
 // Perform initialisation
@@ -41,11 +44,8 @@ int pico_led_init(void) {
 #endif
 }
 
-// Init the read pin
+// Init the pin for the Light Sensor
 int pico_ce_init(void) {
-    // gpio_init(CE_READ_PIN);
-    // gpio_set_dir(CE_READ_PIN, GPIO_IN);
-    // gpio_disable_pulls(CE_READ_PIN);
     adc_init();
     adc_gpio_init(CE_READ_PIN);
     adc_select_input(CE_ADC_INPUT);
@@ -65,31 +65,26 @@ void pico_set_led(bool led_on) {
 
 int main() {
     stdio_init_all();
+
     int rc = pico_led_init();
     int ce = pico_ce_init();
+
     hard_assert(rc == PICO_OK);
     hard_assert(ce == PICO_OK);
 
-    printf("Raw value, voltage (V)\n");
+    const float conversion_factor = ADC_VREF / (1 << 12);
+    const float dark_offset = CE_ADC_VREF_DARK / conversion_factor;
 
     while (true) {
-        // if (gpio_get(CE_READ_PIN)) {
-        //     pico_set_led(true);
-        //     sleep_ms(LED_DELAY_MS);
-        //     pico_set_led(false);
-        //     sleep_ms(LED_DELAY_MS);
-        // }
-
         // 12-bit conversion, assume max value == ADC_VREF == 3.3 V
-        const float conversion_factor = 3.3f / (1 << 12);
         uint16_t result = adc_read();
-        printf("0x%03x, %f\n", result, result * conversion_factor);
+        if (result > dark_offset) {
 
-        // Flash LED so we know the loop is running
-        pico_set_led(true);
-        sleep_ms(LED_DELAY_MS);
-        pico_set_led(false);
-        sleep_ms(LED_DELAY_MS);
-        // sleep_ms(500);
+            // Placeholder for light sensing functionality
+            pico_set_led(true);
+            sleep_ms(LED_DELAY_MS);
+            pico_set_led(false);
+            sleep_ms(LED_DELAY_MS);
+        }
     }
 }

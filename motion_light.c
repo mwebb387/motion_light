@@ -22,6 +22,9 @@
 #define ADC_VREF 3.3f
 #define LED_DELAY_MS 250
 
+// Motion Sensor
+#define MOTION_SENSOR_PIN 17
+
 // CE and ADC Values
 #define CE_READ_PIN 28
 #define CE_ADC_INPUT 2
@@ -42,6 +45,13 @@ int pico_led_init(void) {
     // For Pico W devices we need to initialise the driver etc
     return cyw43_arch_init();
 #endif
+}
+
+int pico_motion_sensor_init(void) {
+    // Initialise the motion sensor pin
+    gpio_init(MOTION_SENSOR_PIN);
+    gpio_set_dir(MOTION_SENSOR_PIN, GPIO_IN);
+    return PICO_OK;
 }
 
 // Init the pin for the Light Sensor
@@ -67,19 +77,25 @@ int main() {
     stdio_init_all();
 
     int rc = pico_led_init();
+    int ms = pico_motion_sensor_init();
     int ce = pico_ce_init();
 
     hard_assert(rc == PICO_OK);
+    hard_assert(ms == PICO_OK);
     hard_assert(ce == PICO_OK);
 
     const float conversion_factor = ADC_VREF / (1 << 12);
     const float dark_offset = CE_ADC_VREF_DARK / conversion_factor;
 
     while (true) {
+        // Check if motion is detected
+        if (!gpio_get(MOTION_SENSOR_PIN)) {
+            continue; // No motion detected, skip to next iteration
+        }
+
         // 12-bit conversion, assume max value == ADC_VREF == 3.3 V
         uint16_t result = adc_read();
         if (result > dark_offset) {
-
             // Placeholder for light sensing functionality
             pico_set_led(true);
             sleep_ms(LED_DELAY_MS);
